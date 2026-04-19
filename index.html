@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCERT Study Planner (Class 6-8)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { margin:0; font-family:'Segoe UI'; background:#0f172a; color:white; }
+header { background:#020617; padding:15px; text-align:center; font-size:24px; }
+.container { display:grid; grid-template-columns:1fr 3fr; min-height:100vh; }
+.sidebar { background:#020617; padding:20px; }
+.sidebar button { width:100%; padding:10px; margin:10px 0; background:#1e293b; color:white; border:none; border-radius:8px; cursor:pointer; }
+.main { padding:20px; }
+.card { background:#1e293b; padding:20px; border-radius:15px; margin-bottom:20px; }
+input, select { padding:10px; margin:5px; border-radius:5px; border:none; }
+button.add { background:#22c55e; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; }
+.table { width:100%; border-collapse: collapse; }
+.table th, .table td { border:1px solid #334155; padding:10px; text-align:center; }
+.progress-bar { height:20px; background:#334155; border-radius:10px; overflow:hidden; }
+.progress-fill { height:100%; background:#22c55e; width:0%; }
+</style>
+</head>
+<body>
+<header>📘 NCERT Planner (Class 6-8)</header>
+<div class="container">
+
+<div class="sidebar">
+    <button onclick="showSection('dashboard')">Dashboard</button>
+    <button onclick="showSection('planner')">Planner</button>
+</div>
+
+<div class="main">
+
+<div id="dashboard" class="card">
+    <h2>📊 Dashboard</h2>
+    <p>Total Tasks: <span id="totalTasks">0</span></p>
+    <p>Completed: <span id="completedTasks">0</span></p>
+    <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+    <canvas id="myChart"></canvas>
+</div>
+
+<div id="planner" class="card" style="display:none;">
+    <h2>📅 Study Planner</h2>
+
+    <select id="classSelect" onchange="updateChapters()">
+        <option value="6">Class 6</option>
+        <option value="7">Class 7</option>
+        <option value="8">Class 8</option>
+    </select>
+
+    <select id="subject" onchange="updateChapters()">
+        <option>Maths</option>
+        <option>Science</option>
+        <option>SST</option>
+    </select>
+
+    <select id="chapter"></select>
+    <input type="text" id="task" placeholder="Task">
+    <button class="add" onclick="addTask()">Add</button>
+
+    <table class="table" id="taskTable">
+        <tr><th>Class</th><th>Subject</th><th>Chapter</th><th>Task</th><th>Status</th></tr>
+    </table>
+</div>
+
+</div>
+</div>
+
+<script>
+let chaptersData = {
+    6:{
+        Maths:["Knowing Our Numbers","Whole Numbers","Playing with Numbers","Basic Geometrical Ideas","Understanding Elementary Shapes","Integers","Fractions","Decimals","Data Handling","Mensuration","Algebra","Ratio and Proportion","Symmetry","Practical Geometry"],
+        Science:["Food: Where Does It Come From","Components of Food","Fibre to Fabric","Sorting Materials","Separation of Substances","Changes Around Us","Getting to Know Plants","Body Movements","Living Organisms","Motion and Measurement","Light, Shadows and Reflections","Electricity and Circuits","Fun with Magnets","Water","Air Around Us","Garbage In Garbage Out"],
+        SST:["History: What, Where, How","On the Trail of Early People","From Gathering to Growing Food","In the Earliest Cities","What Books and Burials Tell Us","Kingdoms, Kings and Republics","New Questions and Ideas","Ashoka the Emperor","Vital Villages","Traders, Kings","New Empires","Buildings, Paintings","Geography: The Earth in the Solar System","Globe Latitudes and Longitudes","Motions of the Earth","Maps","Major Domains of Earth","Our Country India","India Climate Vegetation","Civics: Understanding Diversity","Diversity and Discrimination","What is Government","Key Elements of Government","Panchayati Raj","Rural Administration","Urban Administration","Rural Livelihoods","Urban Livelihoods"]
+    },
+    7:{
+        Maths:["Integers","Fractions and Decimals","Data Handling","Simple Equations","Lines and Angles","Triangle and its Properties","Congruence of Triangles","Comparing Quantities","Rational Numbers","Practical Geometry","Perimeter and Area","Algebraic Expressions","Exponents and Powers","Symmetry","Visualising Solid Shapes"],
+        Science:["Nutrition in Plants","Nutrition in Animals","Fibre to Fabric","Heat","Acids Bases and Salts","Physical and Chemical Changes","Weather Climate","Winds Storms Cyclones","Soil","Respiration in Organisms","Transportation in Animals","Reproduction in Plants","Motion and Time","Electric Current","Light"],
+        SST:["History: Tracing Changes","New Kings and Kingdoms","Delhi Sultans","The Mughal Empire","Rulers and Buildings","Towns Traders Crafts","Tribes Nomads","Devotional Paths","The Making of Regional Cultures","Eighteenth Century Political","Geography: Environment","Inside Our Earth","Our Changing Earth","Air","Water","Natural Vegetation","Human Environment","Life in Tropical","Life in Temperate","Civics: On Equality","Role of Government","How State Government Works","Growing up as Boys and Girls","Women Change","Understanding Media","Markets Around Us","A Shirt in Market","Struggles for Equality"]
+    },
+    8:{
+        Maths:["Rational Numbers","Linear Equations","Understanding Quadrilaterals","Practical Geometry","Data Handling","Squares and Square Roots","Cubes and Cube Roots","Comparing Quantities","Algebraic Expressions","Visualising Solid Shapes","Mensuration","Exponents and Powers","Direct and Inverse Proportion","Factorisation","Introduction to Graphs","Playing with Numbers"],
+        Science:["Crop Production","Microorganisms","Synthetic Fibres","Materials Metals Non-metals","Coal and Petroleum","Combustion and Flame","Conservation of Plants","Cell Structure","Reproduction in Animals","Reaching Age of Adolescence","Force and Pressure","Friction","Sound","Chemical Effects of Current","Some Natural Phenomena","Light"],
+        SST:["History: How When Where","From Trade to Territory","Ruling the Countryside","Tribals Dikus","When People Rebel","Civilising the Native","Women Caste Reform","National Movement","India After Independence","Geography: Resources","Land Soil Water","Agriculture","Industries","Human Resources","Civics: The Constitution","Understanding Secularism","Why Do We Need Laws","Judiciary","Understanding Marginalisation","Confronting Marginalisation","Public Facilities","Law and Social Justice"]
+    }
+};
+
+function updateChapters(){
+    let cls=classSelect.value;
+    let sub=subject.value;
+    let chapterSelect=document.getElementById('chapter');
+    chapterSelect.innerHTML='';
+    chaptersData[cls][sub].forEach(ch=>{
+        let opt=document.createElement('option');
+        opt.text=ch;
+        chapterSelect.add(opt);
+    });
+}
+
+let tasks = JSON.parse(localStorage.getItem('tasks')||'[]');
+let chart;
+
+function showSection(s){document.getElementById('dashboard').style.display='none';document.getElementById('planner').style.display='none';document.getElementById(s).style.display='block';}
+
+function save(){localStorage.setItem('tasks',JSON.stringify(tasks));}
+
+function addTask(){
+    tasks.push({cls:classSelect.value,subject:subject.value,chapter:chapter.value,task:task.value,done:false});
+    save(); render();
+}
+
+function toggleTask(i){ tasks[i].done=!tasks[i].done; save(); render(); }
+
+function render(){
+    let table=document.getElementById('taskTable');
+    table.innerHTML='<tr><th>Class</th><th>Subject</th><th>Chapter</th><th>Task</th><th>Status</th></tr>';
+    let completed=0;
+    let subjectStats={Maths:0,Science:0,SST:0};
+
+    tasks.forEach((t,i)=>{
+        let row=table.insertRow();
+        row.insertCell(0).innerText=t.cls;
+        row.insertCell(1).innerText=t.subject;
+        row.insertCell(2).innerText=t.chapter;
+        row.insertCell(3).innerText=t.task;
+
+        let btn=document.createElement('button');
+        btn.innerText=t.done?'Done':'Pending';
+        if(t.done){ completed++; subjectStats[t.subject]++; }
+        btn.onclick=()=>toggleTask(i);
+        row.insertCell(4).appendChild(btn);
+    });
+
+    totalTasks.innerText=tasks.length;
+    completedTasks.innerText=completed;
+
+    let percent = tasks.length? (completed/tasks.length)*100:0;
+    progressFill.style.width=percent+'%';
+
+    updateChart(subjectStats);
+}
+
+function updateChart(data){
+    let ctx=document.getElementById('myChart');
+    if(chart) chart.destroy();
+    chart=new Chart(ctx,{type:'bar',data:{labels:['Maths','Science','SST'],datasets:[{label:'Completed',data:[data.Maths,data.Science,data.SST]}]}});
+}
+
+updateChapters();
+render();
+</script>
+
+</body>
+</html>
